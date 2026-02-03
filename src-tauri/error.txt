@@ -1,0 +1,161 @@
+cargo :     Checking tauri-ap
+p v0.1.0 (C:\Users\EmrePC\Des
+ktop\Portfoy-Takip-main\src-t
+auri)
+At line:1 char:1
++ cargo check 2>&1 | Out-File
+ -FilePath error.txt -Encodin
+g ascii
++ ~~~~~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: (    Che  
+  cking ta...main\src-taur   
+ i):String) [], RemoteExc    
+eption
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+error[E0382]: borrow of moved
+ value: `symbol`
+   --> src\market.rs:123:34
+    |
+119 |                        
+ .map(|info| {
+    |                        
+      ------ value moved into
+ closure here
+120 |                        
+     println!("[MARKET] Stock
+ {}: {}", symbol, info.last);
+121 |                        
+     (symbol, None, info.last
+, info.change_percent, "hisse
+")
+    |                        
+      ------ variable moved d
+ue to use in closure
+122 |                        
+ })
+123 |                        
+ .map_err(|e| println!("[MARK
+ET] Stock {} failed: {}", sym
+bol, e))
+    |                        
+          ^^^ value borrowed 
+here after move           ---
+--- borrow occurs due to use 
+in closure
+    |
+    = note: move occurs becau
+se `symbol` has type `std::st
+ring::String`, which does not
+ implement the `Copy` trait
+
+error[E0382]: borrow of moved
+ value: `symbol`
+   --> src\market.rs:132:34
+    |
+128 |                        
+ .map(|info| {
+    |                        
+      ------ value moved into
+ closure here
+129 |                        
+     println!("[MARKET] Index
+ {}: {}", symbol, info.last);
+130 |                        
+     (symbol, None, info.last
+, info.change_percent, "endek
+s")
+    |                        
+      ------ variable moved d
+ue to use in closure
+131 |                        
+ })
+132 |                        
+ .map_err(|e| println!("[MARK
+ET] Index {} failed: {}", sym
+bol, e))
+    |                        
+          ^^^ value borrowed 
+here after move           ---
+--- borrow occurs due to use 
+in closure
+    |
+    = note: move occurs becau
+se `symbol` has type `std::st
+ring::String`, which does not
+ implement the `Copy` trait
+
+error[E0382]: borrow of moved
+ value: `symbol`
+   --> src\market.rs:146:34
+    |
+137 |                        
+ .map(|info| {
+    |                        
+      ------ value moved into
+ closure here
+...
+144 |                        
+     (symbol, None, info.curr
+ent.last, change, "kripto")
+    |                        
+      ------ variable moved d
+ue to use in closure
+145 |                        
+ })
+146 |                        
+ .map_err(|e| println!("[MARK
+ET] Crypto {} failed: {}", sy
+mbol, e))
+    |                        
+          ^^^ value borrowed 
+here after move            --
+---- borrow occurs due to use
+ in closure
+    |
+    = note: move occurs becau
+se `symbol` has type `std::st
+ring::String`, which does not
+ implement the `Copy` trait
+
+error[E0382]: borrow of moved
+ value: `symbol`
+   --> src\market.rs:160:34
+    |
+151 |                        
+ .map(|info| {
+    |                        
+      ------ value moved into
+ closure here
+...
+158 |                        
+     (symbol, None, info.curr
+ent.last, change, "doviz")
+    |                        
+      ------ variable moved d
+ue to use in closure
+159 |                        
+ })
+160 |                        
+ .map_err(|e| println!("[MARK
+ET] FX {} failed: {}", symbol
+, e))
+    |                        
+          ^^^ value borrowed 
+here after move        ------
+ borrow occurs due to use in 
+closure
+    |
+    = note: move occurs becau
+se `symbol` has type `std::st
+ring::String`, which does not
+ implement the `Copy` trait
+
+For more information about th
+is error, try `rustc --explai
+n E0382`.
+error: could not compile `tau
+ri-app` (lib) due to 4 previo
+us errors

@@ -1,0 +1,68 @@
+cargo :     Checking tauri-ap
+p v0.1.0 (C:\Users\EmrePC\Des
+ktop\Portfoy-Takip-main\src-t
+auri)
+At line:1 char:1
++ cargo check 2>&1 | Out-File
+ -FilePath check_output.txt -
+Encoding asci ...
++ ~~~~~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: (    Che  
+  cking ta...main\src-taur   
+ i):String) [], RemoteExc    
+eption
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+error[E0252]: the name `__cmd
+__update_market_data` is defi
+ned multiple times
+  --> src\lib.rs:65:10
+   |
+65 | async fn update_market_d
+ata(state: State<'_, AppState
+>, update_type: String, force
+: bool) -> Result<(), String>
+ {
+   |          ^^^^^^^^^^^^^^^
+^^^ `__cmd__update_market_dat
+a` reimported here
+   |
+   = note: `__cmd__update_mar
+ket_data` must be defined onl
+y once in the macro namespace
+ of this module
+help: you can use `as` to cha
+nge the binding name of the i
+mport
+   |
+65 | async fn update_market_d
+ata as other___cmd__update_ma
+rket_data(state: State<'_, Ap
+pState>, update_type: String,
+ force: bool) -> Result<(), S
+tring> {
+   |                         
+    +++++++++++++++++++++++++
++++++++++
+
+warning: unused import: `std:
+:sync::Arc`
+ --> src\scraper.rs:4:5
+  |
+4 | use std::sync::Arc;
+  |     ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_impo
+rts)]` (part of `#[warn(unuse
+d)]`) on by default
+
+For more information about th
+is error, try `rustc --explai
+n E0252`.
+warning: `tauri-app` (lib) ge
+nerated 1 warning
+error: could not compile `tau
+ri-app` (lib) due to 1 previo
+us error; 1 warning emitted

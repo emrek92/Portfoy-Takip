@@ -1,0 +1,27 @@
+
+#[derive(serde::Serialize)]
+struct LastUpdates {
+    tefas: Option<String>,
+    market: Option<String>,
+}
+
+#[tauri::command]
+async fn get_last_updates(state: State<'_, AppState>) -> Result<LastUpdates, String> {
+    let tefas = sqlx::query_scalar::<_, Option<String>>(
+        "SELECT MAX(last_updated) FROM assets WHERE asset_type = 'fon'"
+    )
+    .fetch_one(&state.pool)
+    .await
+    .map_err(|e| e.to_string())
+    .unwrap_or(None);
+
+    let market = sqlx::query_scalar::<_, Option<String>>(
+        "SELECT MAX(last_updated) FROM assets WHERE asset_type != 'fon'"
+    )
+    .fetch_one(&state.pool)
+    .await
+    .map_err(|e| e.to_string())
+    .unwrap_or(None);
+
+    Ok(LastUpdates { tefas, market })
+}
