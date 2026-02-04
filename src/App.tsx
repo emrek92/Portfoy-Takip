@@ -43,10 +43,10 @@ function App() {
         console.log('[APP] Updating market data in background...');
 
         // General data
-        await invoke('update_market_data', { updateType: 'general', force: false });
+        await updateMarketData('general', false);
 
-        // Portfolio assets
-        await invoke('update_market_data', { updateType: 'all', force: false });
+        // Portfolio assets (TEFAS)
+        await updateMarketData('tefas', false);
 
         console.log('[APP] Market data updated, refreshing view...');
         // 3. Refresh view with new data
@@ -77,7 +77,7 @@ function App() {
   const handleUpdateMarkets = useCallback(async () => {
     try {
       await updateMarketData('general', true);
-      await updateMarketData('all', true);
+      await updateMarketData('tefas', true);
     } catch (err) {
       console.error('[APP] Market update failed:', err);
     }
@@ -121,9 +121,6 @@ function App() {
   const { transactions, fetchTransactions, lastUpdates } = useStore();
 
   const getPageTitle = () => {
-    if (activeTab === 'detail' && detailHolding) {
-      return `${detailHolding.symbol} Detay`;
-    }
     switch (activeTab) {
       case 'portfolio': return 'Portföyüm';
       case 'history': return 'İşlem Geçmişi';
@@ -144,6 +141,7 @@ function App() {
             transactions={transactions}
             onViewHistory={handleViewHistory}
             onAddTransaction={handleAddPresetTransaction}
+            isLoading={loading || loadingGeneral || loadingTefas}
           />
         );
       case 'history':
@@ -161,6 +159,7 @@ function App() {
             transactions={transactions}
             onViewHistory={handleViewHistory}
             onAddTransaction={handleAddPresetTransaction}
+            isLoading={loading || loadingGeneral || loadingTefas}
           />
         );
     }

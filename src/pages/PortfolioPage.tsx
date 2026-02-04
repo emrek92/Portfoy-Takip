@@ -1,4 +1,4 @@
-import React, { memo, useMemo, useState } from 'react';
+import React, { memo, useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search,
@@ -20,12 +20,21 @@ import {
     ArrowUpRight,
     ArrowDownRight,
     Layers,
-    ChevronDown
+    ChevronDown,
+    PieChart as PieChartIcon
 } from 'lucide-react';
+import {
+    PieChart,
+    Pie,
+    Cell,
+    ResponsiveContainer,
+    Tooltip
+} from 'recharts';
 import { invoke } from '@tauri-apps/api/core';
 import { Card, CardHeader } from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
+import Skeleton from '../components/ui/Skeleton';
 import { cn, formatCurrency, formatPercentage, formatDate } from '../lib/utils';
 import type { Holding, Transaction, PortfolioSummary, LastUpdates } from '../store/useStore';
 
@@ -37,6 +46,7 @@ export interface PortfolioPageProps {
     onViewHistory?: (symbol: string) => void;
     onAddTransaction?: (symbol: string, type: 'buy' | 'sell') => void;
     onViewDetail?: (holding: Holding) => void;
+    isLoading?: boolean;
 }
 
 type SortField = 'symbol' | 'value' | 'pnl_pct' | 'quantity';
@@ -79,13 +89,16 @@ const formatLastDate = (dateStr: string | null) => {
 
 // --- Sub-components ---
 
-const DashboardStat = memo<{
+interface DashboardStatProps {
     title: string;
     value: string;
     subtitle?: string;
     icon: React.ElementType;
     variant: 'emerald' | 'rose' | 'sky' | 'amber' | 'violet';
-}>(({ title, value, subtitle, icon: Icon, variant }) => {
+    loading?: boolean;
+}
+
+const DashboardStat = memo<DashboardStatProps>(({ title, value, subtitle, icon: Icon, variant, loading }) => {
     const variants = {
         emerald: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
         rose: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
@@ -94,6 +107,20 @@ const DashboardStat = memo<{
         violet: 'bg-violet-500/10 text-violet-500 border-violet-500/20',
     };
 
+    if (loading) {
+        return (
+            <Card variant="glass" padding="sm" className="overflow-hidden h-full shadow-sm border-[var(--color-border)]/50">
+                <div className="flex items-center gap-2.5">
+                    <Skeleton variant="circle" className="w-8 h-8 rounded-lg" />
+                    <div className="flex-1 space-y-2">
+                        <Skeleton className="h-2 w-1/2" />
+                        <Skeleton className="h-4 w-3/4" />
+                    </div>
+                </div>
+            </Card>
+        );
+    }
+
     return (
         <Card variant="glass" padding="sm" className="overflow-hidden group h-full transition-all hover:bg-white/5 shadow-sm border-[var(--color-border)]/50">
             <div className="relative flex items-center gap-2.5">
@@ -101,15 +128,19 @@ const DashboardStat = memo<{
                     <Icon size={14} />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-semibold text-[var(--color-text-secondary)] uppercase tracking-[0.1em] mb-0.5 truncate">
+                    <p className="text-[10px] font-bold text-[var(--color-text-secondary)] uppercase tracking-[0.15em] mb-1 truncate opacity-70">
                         {title}
                     </p>
-                    <h4 className="text-sm font-semibold text-[var(--color-text-primary)] tracking-tight truncate font-mono">
-                        {value}
+                    <h4 className="text-[15px] font-semibold text-[var(--color-text-primary)] tracking-tight truncate font-mono">
+                        {subtitle || value}
                     </h4>
                     {subtitle && (
-                        <p className="text-[10px] text-[var(--color-text-secondary)] truncate font-medium opacity-70 leading-none">
-                            {subtitle}
+                        <p className={cn(
+                            "text-[11px] font-medium truncate font-mono leading-none mt-1",
+                            variant === 'emerald' ? 'text-emerald-500' :
+                                variant === 'rose' ? 'text-rose-500' : 'text-[var(--color-text-secondary)]'
+                        )}>
+                            {value}
                         </p>
                     )}
                 </div>
@@ -433,7 +464,7 @@ const TransactionModal = memo<{
 
 TransactionModal.displayName = 'TransactionModal';
 
-const PortfolioPage = memo<PortfolioPageProps>(({ holdings, summary, lastUpdates, transactions = [], onViewHistory, onAddTransaction, onViewDetail }) => {
+const PortfolioPage = memo<PortfolioPageProps>(({ holdings, summary, lastUpdates, transactions = [], onViewHistory, onAddTransaction, onViewDetail, isLoading }) => {
     const [searchTerm, setSearchTerm] = useState('');
 
     const [sortField, setSortField] = useState<SortField>('value');
@@ -445,6 +476,20 @@ const PortfolioPage = memo<PortfolioPageProps>(({ holdings, summary, lastUpdates
         const types = new Set(holdings.map((h) => h.asset_type));
         return ['all', ...Array.from(types)];
     }, [holdings]);
+
+    const distributionData = useMemo(() => {
+        const dist: Record<string, number> = {};
+        holdings.forEach(h => {
+            const label = h.asset_type.toUpperCase();
+            dist[label] = (dist[label] || 0) + h.value;
+        });
+        return Object.entries(dist).map(([name, value]) => ({
+            name,
+            value
+        })).sort((a, b) => b.value - a.value);
+    }, [holdings]);
+
+    const COLORS = ['#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#f97316'];
 
     const filteredAndSortedHoldings = useMemo(() => {
         let result = [...holdings];
@@ -526,16 +571,16 @@ const PortfolioPage = memo<PortfolioPageProps>(({ holdings, summary, lastUpdates
                         <Card variant="glass" className="relative p-3 md:px-5 md:py-4 bg-gradient-to-br from-sky-500/10 via-transparent to-emerald-500/10 border-0 shadow-md">
                             <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-3">
                                 <div className="space-y-0 text-left">
-                                    <div className="flex items-center gap-1.5 mb-0.5">
-                                        <Sparkles size={10} className="text-amber-500" />
-                                        <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--color-text-secondary)]">PORTFÖY ÖZETİ</span>
+                                    <div className="flex items-center gap-1.5 mb-1.5">
+                                        <Sparkles size={11} className="text-amber-500 group-hover:animate-pulse" />
+                                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-text-secondary)] opacity-80">PORTFÖY ÖZETİ</span>
                                     </div>
-                                    <div className="flex items-center gap-2.5">
-                                        <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-primary)] tracking-tighter font-mono">
+                                    <div className="flex items-center gap-3">
+                                        <h1 className="text-3xl md:text-4xl font-semibold text-[var(--color-text-primary)] tracking-tight font-mono">
                                             {formatCurrency(summary.total_value)}
                                         </h1>
-                                        <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-md bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] text-[12px] font-semibold text-[var(--color-text-secondary)] font-mono">
-                                            <DollarSign size={8} className="text-emerald-500" />
+                                        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--color-bg-tertiary)]/50 border border-[var(--color-border)]/30 text-[13px] font-medium text-[var(--color-text-secondary)] font-mono shadow-inner">
+                                            <DollarSign size={10} className="text-emerald-500" />
                                             <span>${(summary.total_value_usd || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
                                         </div>
                                     </div>
@@ -557,16 +602,55 @@ const PortfolioPage = memo<PortfolioPageProps>(({ holdings, summary, lastUpdates
                                     isPnLPositive ? "text-emerald-500" : "text-rose-500"
                                 )}>
                                     <div className="flex flex-col leading-tight text-right">
-                                        <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--color-text-secondary)] mb-0.5">BEKLEYEN KAR/ZARAR</span>
+                                        <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--color-text-secondary)] mb-0.5 opacity-60">BEKLEYEN KAR/ZARAR</span>
                                         <div className="flex items-center justify-end gap-2">
-                                            <span className="text-lg font-bold tracking-tight font-mono">
+                                            <span className="text-xl font-bold tracking-tight font-mono">
                                                 {isPnLPositive ? '+' : ''}{formatCurrency(summary.unrealized_pnl)}
                                             </span>
-                                            <span className="text-sm font-bold font-mono opacity-90">
+                                            <span className={cn(
+                                                "text-xs font-bold font-mono px-1.5 py-0.5 rounded-md",
+                                                isPnLPositive ? "bg-emerald-500/10" : "bg-rose-500/10"
+                                            )}>
                                                 ({formatPercentage(summary.roi_pct)})
                                             </span>
                                         </div>
                                     </div>
+                                </div>
+
+                                {/* Mini Distribution Chart */}
+                                <div className="hidden lg:block w-48 h-20 border-l border-[var(--color-border)]/30 pl-4">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={distributionData}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={25}
+                                                outerRadius={38}
+                                                paddingAngle={2}
+                                                dataKey="value"
+                                                stroke="transparent"
+                                            >
+                                                {distributionData.map((_, index) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip
+                                                content={({ active, payload }) => {
+                                                    if (active && payload && payload.length) {
+                                                        const data = payload[0].payload;
+                                                        return (
+                                                            <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg p-2 shadow-xl backdrop-blur-md">
+                                                                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-primary)]">{data.name}</p>
+                                                                <p className="text-[10px] font-mono text-sky-400">{formatCurrency(data.value)}</p>
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                }}
+                                            />
+                                        </PieChart>
+                                    </ResponsiveContainer>
                                 </div>
                             </div>
                         </Card>
@@ -574,50 +658,56 @@ const PortfolioPage = memo<PortfolioPageProps>(({ holdings, summary, lastUpdates
                 )}
 
                 {/* 2. Key Stats Grid (Merged Dashboard Stats) */}
-                {summary && (
+                {(summary || isLoading) && (
                     <motion.div variants={itemVariants}>
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                             <DashboardStat
                                 title="Günlük Değişim"
-                                value={formatPercentage(summary.daily_change_pct)}
-                                subtitle={formatCurrency(summary.daily_change)}
+                                value={formatPercentage(summary?.daily_change_pct || 0)}
+                                subtitle={formatCurrency(summary?.daily_change || 0)}
                                 icon={TrendingUp}
-                                variant={summary.daily_change >= 0 ? "emerald" : "rose"}
+                                variant={(summary?.daily_change || 0) >= 0 ? "emerald" : "rose"}
+                                loading={isLoading && !summary}
                             />
                             <DashboardStat
                                 title="Haftalık Değişim"
-                                value={formatPercentage(summary.weekly_change_pct)}
-                                subtitle={formatCurrency(summary.weekly_change)}
+                                value={formatPercentage(summary?.weekly_change_pct || 0)}
+                                subtitle={formatCurrency(summary?.weekly_change || 0)}
                                 icon={Calendar}
-                                variant={summary.weekly_change >= 0 ? "emerald" : "rose"}
+                                variant={(summary?.weekly_change || 0) >= 0 ? "emerald" : "rose"}
+                                loading={isLoading && !summary}
                             />
                             <DashboardStat
                                 title="Aylık Değişim"
-                                value={formatPercentage(summary.monthly_change_pct)}
-                                subtitle={formatCurrency(summary.monthly_change)}
+                                value={formatPercentage(summary?.monthly_change_pct || 0)}
+                                subtitle={formatCurrency(summary?.monthly_change || 0)}
                                 icon={Calendar}
-                                variant={summary.monthly_change >= 0 ? "emerald" : "rose"}
+                                variant={(summary?.monthly_change || 0) >= 0 ? "emerald" : "rose"}
+                                loading={isLoading && !summary}
                             />
                             <DashboardStat
                                 title="Gerçekleşen Kar"
-                                value={formatCurrency(summary.realized_pnl)}
+                                value={formatCurrency(summary?.realized_pnl || 0)}
                                 subtitle="Tüm zamanlar"
                                 icon={History}
-                                variant={summary.realized_pnl >= 0 ? "emerald" : "rose"}
+                                variant={(summary?.realized_pnl || 0) >= 0 ? "emerald" : "rose"}
+                                loading={isLoading && !summary}
                             />
                             <DashboardStat
                                 title="En İyi Varlık"
-                                value={summary.top_performer || '-'}
+                                value={summary?.top_performer || '-'}
                                 subtitle="Getiri lideri"
                                 icon={Award}
                                 variant="emerald"
+                                loading={isLoading && !summary}
                             />
                             <DashboardStat
                                 title="En Kötü Varlık"
-                                value={summary.worst_performer || '-'}
+                                value={summary?.worst_performer || '-'}
                                 subtitle="Getiri sonuncusu"
                                 icon={AlertTriangle}
                                 variant="rose"
+                                loading={isLoading && !summary}
                             />
                         </div>
                     </motion.div>
@@ -664,127 +754,140 @@ const PortfolioPage = memo<PortfolioPageProps>(({ holdings, summary, lastUpdates
                 <motion.div variants={itemVariants}>
                     <Card variant="glass" padding="none" className="overflow-hidden border-0 shadow-lg">
                         {/* Table Header - Compact */}
-                        <div className="hidden md:grid grid-cols-7 gap-3 px-6 py-3 bg-[var(--color-bg-tertiary)]/30 border-b border-[var(--color-border)]/50 text-[11px] font-bold text-[var(--color-text-secondary)] uppercase tracking-[0.1em]">
+                        <div className="hidden md:grid grid-cols-7 gap-3 px-6 py-3 bg-[var(--color-bg-tertiary)]/30 border-b border-[var(--color-border)]/50 text-[10px] font-bold text-[var(--color-text-secondary)] uppercase tracking-[0.15em] opacity-80">
                             <button onClick={() => handleSort('symbol')} className="flex items-center gap-1 hover:text-sky-400 transition-colors text-left uppercase">
                                 VARLIK {sortField === 'symbol' && <ChevronDown size={12} className={sortDirection === 'asc' ? 'rotate-180' : ''} />}
                             </button>
                             <button onClick={() => handleSort('quantity')} className="flex items-center gap-1 hover:text-sky-400 transition-colors uppercase">
                                 ADET {sortField === 'quantity' && <ChevronDown size={12} className={sortDirection === 'asc' ? 'rotate-180' : ''} />}
                             </button>
-                            <div className="uppercase">MALİYET</div>
-                            <div className="uppercase">CARI FIYAT</div>
-                            <button onClick={() => handleSort('pnl_pct')} className="flex items-center gap-1 hover:text-sky-400 transition-colors text-center uppercase">
+                            <div className="uppercase flex items-center">MALİYET</div>
+                            <div className="uppercase flex items-center">CARI FIYAT</div>
+                            <button onClick={() => handleSort('pnl_pct')} className="flex items-center gap-1 justify-center hover:text-sky-400 transition-colors text-center uppercase">
                                 K/Z % {sortField === 'pnl_pct' && <ChevronDown size={12} className={sortDirection === 'asc' ? 'rotate-180' : ''} />}
                             </button>
                             <button onClick={() => handleSort('value')} className="flex items-center gap-1 justify-end hover:text-sky-400 transition-colors text-right uppercase">
                                 DEĞER {sortField === 'value' && <ChevronDown size={12} className={sortDirection === 'asc' ? 'rotate-180' : ''} />}
                             </button>
-                            <div className="text-right pr-2 uppercase">AKSİYON</div>
+                            <div className="text-right uppercase flex items-center justify-end">AKSİYON</div>
                         </div>
 
                         {/* Holdings List */}
-                        <div className="divide-y divide-[var(--color-border)]/30">
-                            {filteredAndSortedHoldings.map((holding, index) => {
-                                const colors = assetTypeColors[holding.asset_type] || assetTypeColors['hisse'];
-                                const isPos = holding.pnl_pct >= 0;
+                        <div className="divide-y divide-[var(--color-border)]/30 min-h-[400px]">
+                            {isLoading && holdings.length === 0 ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <div key={i} className="px-6 py-5">
+                                        <Skeleton variant="row" className="h-10" />
+                                    </div>
+                                ))
+                            ) : filteredAndSortedHoldings.length > 0 ? (
+                                filteredAndSortedHoldings.map((holding, index) => {
+                                    const colors = assetTypeColors[holding.asset_type] || assetTypeColors['hisse'];
+                                    const isPos = holding.pnl_pct >= 0;
 
-                                return (
-                                    <motion.div
-                                        key={holding.symbol}
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        transition={{ delay: index * 0.03 }}
-                                        onClick={() => setSelectedHolding(holding)}
-                                        className="grid grid-cols-2 md:grid-cols-7 gap-3 px-6 py-2.5 hover:bg-sky-500/5 transition-all cursor-pointer group"
-                                    >
-                                        {/* Symbol */}
-                                        <div className="flex items-center gap-3">
-                                            <div className={cn(
-                                                'w-8 h-8 flex items-center justify-center rounded-lg text-[11px] font-bold border transition-transform group-hover:scale-110 shrink-0 font-mono',
-                                                colors.bg, colors.text, 'border-current/20'
-                                            )}>
-                                                {holding.symbol.slice(0, 2)}
-                                            </div>
-                                            <div className="min-w-0">
-                                                <div className="flex items-center gap-1">
-                                                    <span className="text-sm font-bold text-[var(--color-text-primary)] group-hover:text-sky-400 transition-colors uppercase truncate">
-                                                        {holding.symbol}
-                                                    </span>
-                                                    <ChevronRight size={10} className="text-[var(--color-text-secondary)] opacity-0 group-hover:opacity-100 transition-all -translate-x-1 group-hover:translate-x-0 shrink-0" />
+                                    return (
+                                        <motion.div
+                                            key={holding.symbol}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            whileHover={{ y: -2, scale: 1.002, backgroundColor: 'rgba(14, 165, 233, 0.04)' }}
+                                            whileTap={{ scale: 0.998 }}
+                                            transition={{
+                                                opacity: { duration: 0.2, delay: index * 0.02 },
+                                                y: { type: 'spring', stiffness: 300, damping: 20 }
+                                            }}
+                                            onClick={() => setSelectedHolding(holding)}
+                                            className="grid grid-cols-2 md:grid-cols-7 gap-3 px-6 py-3.5 border-b border-[var(--color-border)]/20 last:border-0 transition-shadow hover:shadow-lg hover:shadow-sky-500/5 cursor-pointer group relative overflow-hidden"
+                                        >
+                                            {/* Symbol */}
+                                            <div className="flex items-center gap-3">
+                                                <div className={cn(
+                                                    'w-8 h-8 flex items-center justify-center rounded-lg text-[11px] font-bold border transition-transform group-hover:scale-110 shrink-0 font-mono',
+                                                    colors.bg, colors.text, 'border-current/20'
+                                                )}>
+                                                    {holding.symbol.slice(0, 2)}
                                                 </div>
-                                                <p className="text-[10px] text-[var(--color-text-secondary)] truncate font-semibold uppercase opacity-60">
-                                                    {holding.name.length > 20 ? holding.name.slice(0, 20) + '...' : holding.name}
-                                                </p>
+                                                <div className="min-w-0">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-[13px] font-semibold text-[var(--color-text-primary)] group-hover:text-sky-400 transition-colors uppercase">
+                                                            {holding.symbol}
+                                                        </span>
+                                                        <ChevronRight size={10} className="text-[var(--color-text-secondary)] opacity-0 group-hover:opacity-100 transition-all -translate-x-1 group-hover:translate-x-0 shrink-0" />
+                                                    </div>
+                                                    <p className="text-[10px] text-[var(--color-text-secondary)] font-medium uppercase opacity-50 leading-tight">
+                                                        {holding.name}
+                                                    </p>
+                                                </div>
                                             </div>
-                                        </div>
 
-                                        {/* Quantity */}
-                                        <div className="hidden md:flex items-center">
-                                            <span className="text-sm font-semibold text-[var(--color-text-primary)] font-mono">
-                                                {holding.quantity.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}
-                                            </span>
-                                        </div>
-
-                                        {/* Cost */}
-                                        <div className="hidden md:flex items-center">
-                                            <span className="text-xs font-medium text-[var(--color-text-secondary)] font-mono">
-                                                {formatCurrency(holding.avg_cost)}
-                                            </span>
-                                        </div>
-
-                                        {/* Price */}
-                                        <div className="hidden md:flex items-center">
-                                            <span className="text-sm font-semibold text-[var(--color-text-primary)] font-mono">
-                                                {formatCurrency(holding.current_price)}
-                                            </span>
-                                        </div>
-
-                                        {/* PnL */}
-                                        <div className="flex items-center justify-end md:justify-center">
-                                            <div className={cn(
-                                                'flex items-center gap-0.5 text-[11px] font-bold font-mono',
-                                                isPos ? 'text-emerald-500' : 'text-rose-500'
-                                            )}>
-                                                {isPos ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
-                                                {formatPercentage(holding.pnl_pct)}
+                                            {/* Quantity */}
+                                            <div className="hidden md:flex items-center">
+                                                <span className="text-[13px] font-semibold text-[var(--color-text-primary)] font-mono">
+                                                    {holding.quantity.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}
+                                                </span>
                                             </div>
-                                        </div>
 
-                                        {/* Value */}
-                                        <div className="flex items-center justify-end">
-                                            <span className="text-sm font-bold text-sky-400 tracking-tight font-mono">
-                                                {formatCurrency(holding.value)}
-                                            </span>
-                                        </div>
+                                            {/* Cost */}
+                                            <div className="hidden md:flex items-center">
+                                                <span className="text-[13px] font-medium text-[var(--color-text-secondary)] font-mono">
+                                                    {formatCurrency(holding.avg_cost)}
+                                                </span>
+                                            </div>
 
-                                        {/* Actions */}
-                                        <div className="hidden md:flex items-center justify-end gap-1.5">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onAddTransaction?.(holding.symbol, 'buy');
-                                                }}
-                                                className="w-10 h-8 p-0 text-emerald-500 hover:bg-emerald-500/10 rounded-lg group/btn"
-                                            >
-                                                <TrendingUp size={16} className="group-hover/btn:scale-110 transition-transform" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onAddTransaction?.(holding.symbol, 'sell');
-                                                }}
-                                                className="w-10 h-8 p-0 text-rose-500 hover:bg-rose-500/10 rounded-lg group/btn"
-                                            >
-                                                <TrendingDown size={16} className="group-hover/btn:scale-110 transition-transform" />
-                                            </Button>
-                                        </div>
-                                    </motion.div>
-                                );
-                            })}
+                                            {/* Price */}
+                                            <div className="hidden md:flex items-center">
+                                                <span className="text-[13px] font-semibold text-[var(--color-text-primary)] font-mono">
+                                                    {formatCurrency(holding.current_price)}
+                                                </span>
+                                            </div>
+
+                                            {/* PnL */}
+                                            <div className="flex items-center justify-end md:justify-center">
+                                                <div className={cn(
+                                                    'flex items-center gap-0.5 text-[13px] font-semibold font-mono',
+                                                    isPos ? 'text-emerald-500' : 'text-rose-500'
+                                                )}>
+                                                    {isPos ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
+                                                    {formatPercentage(holding.pnl_pct)}
+                                                </div>
+                                            </div>
+
+                                            {/* Value */}
+                                            <div className="flex items-center justify-end">
+                                                <span className="text-[13px] font-semibold text-sky-400 tracking-tight font-mono">
+                                                    {formatCurrency(holding.value)}
+                                                </span>
+                                            </div>
+
+                                            {/* Actions */}
+                                            <div className="hidden md:flex items-center justify-end gap-1.5">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onAddTransaction?.(holding.symbol, 'buy');
+                                                    }}
+                                                    className="w-10 h-8 p-0 text-emerald-500 hover:bg-emerald-500/10 rounded-lg group/btn"
+                                                >
+                                                    <TrendingUp size={16} className="group-hover/btn:scale-110 transition-transform" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onAddTransaction?.(holding.symbol, 'sell');
+                                                    }}
+                                                    className="w-10 h-8 p-0 text-rose-500 hover:bg-rose-500/10 rounded-lg group/btn"
+                                                >
+                                                    <TrendingDown size={16} className="group-hover/btn:scale-110 transition-transform" />
+                                                </Button>
+                                            </div>
+                                        </motion.div>
+                                    );
+                                })
+                            ) : null}
 
                             {filteredAndSortedHoldings.length === 0 && (
                                 <div className="px-6 py-20 text-center">

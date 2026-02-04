@@ -344,7 +344,7 @@ const SettingsPage = memo<SettingsPageProps>(function SettingsPage() {
                                 </div>
                             </div>
 
-            {backupPath && (
+                            {backupPath && (
                                 <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
                                     <div className="flex items-center gap-2 text-[10px] text-emerald-500 font-medium uppercase tracking-wider">
                                         <CheckCircle2 size={12} />
@@ -357,88 +357,7 @@ const SettingsPage = memo<SettingsPageProps>(function SettingsPage() {
                 </Card>
             </motion.div>
 
-            {/* API Debug Panel */}
-            <motion.div variants={itemVariants}>
-                <Card variant="glass">
-                    <CardHeader 
-                        title="🔧 API Veri Kaynağı (Debug)" 
-                        subtitle="Piyasa verilerinin nereden çekildiğini kontrol edin" 
-                    />
-                    <CardContent>
-                        <div className="space-y-4">
-                            {/* API Source Info */}
-                            <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl">
-                                <div className="flex items-center gap-3 mb-3">
-                                    <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500">
-                                        <Globe size={18} />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-[var(--color-text-primary)]">Aktif Veri Kaynağı</p>
-                                        <p className="text-[11px] text-emerald-500 font-mono">https://borsapy-api.onrender.com</p>
-                                    </div>
-                                </div>
-                                <div className="text-[11px] text-[var(--color-text-secondary)] space-y-1">
-                                    <p>📈 Hisseler: <code className="text-sky-400">/stocks/{'{symbol}'}/info</code></p>
-                                    <p>📊 Endeksler: <code className="text-sky-400">/indices/{'{symbol}'}/info</code></p>
-                                    <p>💰 Fonlar: <code className="text-sky-400">/funds/{'{code}'}/info</code></p>
-                                    <p>💱 Döviz: <code className="text-sky-400">/fx/{'{symbol}'}/current</code></p>
-                                    <p>🪙 Kripto: <code className="text-sky-400">/crypto/{'{symbol}'}/current</code></p>
-                                </div>
-                            </div>
 
-                            {/* Test API Button */}
-                            <div className="flex gap-2">
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    className="flex-1"
-                                    leftIcon={<RefreshCw size={14} />}
-                                    onClick={async () => {
-                                        try {
-                                            console.log('[DEBUG] Testing API connection...');
-                                            const startTime = Date.now();
-                                            
-                                            // Force update to trigger API calls
-                                            await invoke('update_market_data', { updateType: 'general', force: true });
-                                            
-                                            const elapsed = Date.now() - startTime;
-                                            console.log(`[DEBUG] API call completed in ${elapsed}ms`);
-                                            alert(`✅ API bağlantısı başarılı!\n\nSüre: ${elapsed}ms\nKaynak: borsapy-api.onrender.com\n\nTerminalde [API_CLIENT] loglarını kontrol edin.`);
-                                            
-                                            await fetchData();
-                                        } catch (error) {
-                                            console.error('[DEBUG] API test failed:', error);
-                                            alert('❌ API bağlantısı başarısız: ' + error);
-                                        }
-                                    }}
-                                >
-                                    API Bağlantısını Test Et
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                        window.open('https://borsapy-api.onrender.com/docs', '_blank');
-                                    }}
-                                >
-                                    API Docs
-                                </Button>
-                            </div>
-
-                            {/* Info Box */}
-                            <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl">
-                                <div className="flex items-start gap-2">
-                                    <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
-                                    <p className="text-[11px] text-[var(--color-text-secondary)]">
-                                        <span className="font-bold text-amber-500">Not:</span> API çağrıları terminalde <code className="text-sky-400">[API_CLIENT]</code> prefix'i ile loglanır. 
-                                        Verilerin gerçekten API'den geldiğini doğrulamak için terminali kontrol edin.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </motion.div>
 
 
 

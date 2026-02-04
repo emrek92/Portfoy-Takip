@@ -1,13 +1,17 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=JetBrains+Mono:wght@100..800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Inter+Tight:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
 @import "tailwindcss";
 
 :root {
   --font-main: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-mono: 'Inter Tight', sans-serif;
 
   font-family: var(--font-main);
   line-height: 1.5;
   font-weight: 400;
+
+  font-feature-settings: 'tnum' 1, 'lnum' 1, 'cv01' 1, 'cv11' 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 
   color-scheme: light dark;
   color: var(--color-text-primary);
@@ -87,7 +91,17 @@ body {
   min-width: 320px;
   min-height: 100vh;
   overflow: hidden;
+  background-image: radial-gradient(at 0% 0%, hsla(210, 100%, 95%, 1) 0, transparent 50%),
+    radial-gradient(at 50% 0%, hsla(225, 100%, 95%, 1) 0, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(339, 49%, 95%, 1) 0, transparent 50%);
   transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+[data-theme="dark"] body,
+.dark body {
+  background-image: radial-gradient(at 0% 0%, hsla(220, 30%, 10%, 1) 0, transparent 50%),
+    radial-gradient(at 50% 0%, hsla(220, 30%, 12%, 1) 0, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(220, 30%, 10%, 1) 0, transparent 50%);
 }
 
 #root {
@@ -189,4 +203,70 @@ body {
 
 .skip-link:focus {
   top: 0;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.05) 50%,
+      rgba(255, 255, 255, 0) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite ease-in-out;
+}
+
+[data-theme="dark"] .animate-shimmer,
+.dark .animate-shimmer {
+  background: linear-gradient(90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.03) 50%,
+      rgba(255, 255, 255, 0) 100%);
+  background-size: 200% 100%;
+}
+
+.glass-deep {
+  background: rgba(var(--color-bg-secondary-rgb), 0.4);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(var(--color-text-secondary-rgb, 148, 163, 184), 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--color-text-secondary-rgb, 148, 163, 184), 0.2);
+}
+
+
+/* Remove Number Input Arrows */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
 }

@@ -248,7 +248,14 @@ const AddTransactionModal = memo<AddTransactionModalProps>(({ onClose, onSave, i
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-[var(--color-text-secondary)]">Miktar</label>
+                                <div className="flex justify-between">
+                                    <label className="text-sm font-medium text-[var(--color-text-secondary)]">Miktar</label>
+                                    {formData.transaction_type === 'sell' && (
+                                        <span className="text-[11px] font-medium text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                                            Elde: {holdings.find(h => h.symbol === formData.symbol.toUpperCase())?.quantity || 0}
+                                        </span>
+                                    )}
+                                </div>
                                 <Input
                                     type="number"
                                     min="0"
